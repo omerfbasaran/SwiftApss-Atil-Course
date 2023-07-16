@@ -18,10 +18,56 @@ class DetailsVC: UIViewController , UIImagePickerControllerDelegate , UINavigati
     
     @IBOutlet weak var yearTextField: UITextField!
     
+    @IBOutlet weak var saveButton: UIButton!
+    
+    var chosenPainting = ""
+    var chosenPaintingId : UUID?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        if chosenPainting != "" {
+            
+            saveButton.isHidden = true
+            
+            let idString = chosenPaintingId?.uuidString
+            
+            let appDelegate = UIApplication.shared.delegate as! AppDelegate
+            let context = appDelegate.persistentContainer.viewContext
+            
+            let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Paintings")
+            fetchRequest.predicate = NSPredicate(format: "id = %@", idString!)
+            fetchRequest.returnsObjectsAsFaults = false
+            
+            do {
+                let results = try context.fetch(fetchRequest)
+                if results.count > 0 {
+                    
+                    for result in results as! [NSManagedObject] {
+                        
+                        if let name = result.value(forKey: "name") as? String{
+                            nameTextField.text = name
+                        }
+                        if let artist = result.value(forKey: "artist") as? String{
+                            artistTextField.text = artist
+                        }
+                        if let year = result.value(forKey: "year") as? Int{
+                            yearTextField.text = String(year)
+                        }
+                        if let image = result.value(forKey: "image") as? Data{
+                            imageView.image = UIImage(data: image)
+                        }
+                    }
+                }
+                
+                }  catch {
+                    
+                }
+            
+        } else {
+            saveButton.isHidden = false
+            saveButton.isEnabled = false
+        }
         
         view.isUserInteractionEnabled = true
         let gestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(closeKeyboard))
@@ -70,9 +116,12 @@ class DetailsVC: UIViewController , UIImagePickerControllerDelegate , UINavigati
             print("error when saved")
         }
         
+        NotificationCenter.default.post(name: NSNotification.Name("newDataPosted"), object: nil)
+        self.navigationController?.popViewController(animated: true)
     }
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
         imageView.image = info[.originalImage] as? UIImage
+        saveButton.isEnabled = true
         self.dismiss(animated: true)
     }
 }
